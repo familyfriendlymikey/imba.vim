@@ -1,13 +1,30 @@
-# imba-vim
-
-I'm opinionated about how TUI text editors should work,
-so I was interested in implementing my own
-(though I should probably just hack on emacs).
+# vim.imba
 
 I wanted to see how easy it would be to make a
-TUI text editor with basic functionality,
-and it turns out it's as easy as 100 lines of code.
+TUI text editor with very basic functionality,
+and it turns out it's as easy as <200 lines of code.
 
-I don't plan on writing the actual editor I make in imba
-since I want to learn lisp, but I'll leave this here to make things
-easier for anybody looking to do something similar in the future.
+There are probably bugs.
+The bugs I have noticed have to do with redrawing being async or something,
+but since I'm not actually going to implement an editor in JS, I'm not going to fix that.
+
+I have the following implemented:
+
+Normal Mode Key | Function
+-|-
+hjkl | left down up right
+i | enter insert mode
+w | save and quit
+q | force quit
+
+Insert Mode Key | Function
+-|-
+esc | enter normal mode
+backspace | works fine
+return | works fine
+
+## Useful Resources
+- [Wish I found this blog post earlier](http://xn--rpa.cc/irl/term.html)
+- [Wikipedia list of unicode character keycodes](https://en.wikipedia.org/wiki/List_of_Unicode_characters)
+- [List of escape codes](https://espterm.github.io/docs/VT100%20escape%20codes.html)
+- [I didn't use this TUI text editor tutorial, but it might be useful](https://viewsourcecode.org/snaptoken/kilo/04.aTextViewer.html)

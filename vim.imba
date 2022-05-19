@@ -1,180 +1,168 @@
 import { readFileSync, writeFileSync } from 'fs'
 
-let p = console.log
-let stdin = process.stdin
-let stdout = process.stdout
-let args = process.argv
-
 let filename
 let buffer
-let original_file
-let command_text = ""
+let last_read
 
 try
-	filename = args[2]
-	original_file = readFileSync(filename, "utf-8")
-	buffer = original_file.split("\n")
+	filename = process.argv[2]
+	last_read = readFileSync(filename, "utf-8")
+	buffer = last_read.split("\n")
 catch
-	p "Error reading file, quitting."
 	process.exit!
 
 let scroll_y = 0
+let scroll_x = 0
 let cursor_x = 0
 let cursor_y = 0
 let mode = "normal"
 
-def write s
-	stdout.write s
-
 def clear_screen
-	write "\x1bc"
+	# we don't use "\x1bc" here because that
+	# clears scrollback for the entire terminal session
+	process.stdout.write "\x1b[2J"
 
-def write_ansi_code s
-	write "\x1b[{s}"
+def place_cursor x, y
+	process.stdout.write "\x1b[{y};{x}H"
 
-def draw_buffer
-	draw buffer.slice(scroll_y, scroll_y + stdout.rows).join("\n"), cursor_x, cursor_y - scroll_y
+def hide_cursor
+	process.stdout.write "\x1b[?25l"
 
-def draw s, x, y
+def show_cursor
+	process.stdout.write "\x1b[?25h"
+
+def smcup
+	# switches to an alternate screen buffer so as to not
+	# interfere with the user's current terminal window
+	process.stdout.write "\x1b[?1049h"
+
+def rmcup
+	# switches back, see smcup
+	process.stdout.write "\x1b[?1049l"
+
+def row
+	buffer[cursor_y]
+
+def draw
+	let arr = []
+	let row = scroll_y
+	while row < Math.min(scroll_y + process.stdout.rows, buffer.length)
+		arr.push buffer[row].slice(scroll_x, scroll_x + process.stdout.columns)
+		row += 1
+	hide_cursor!
 	clear_screen!
-	write s
-	write_ansi_code "{y + 1};{x + 1}f"
+	place_cursor 1, 1
+	process.stdout.write arr.join("\n")
+	place_cursor (cursor_x - scroll_x + 1), (cursor_y - scroll_y + 1)
+	show_cursor!
 
-def move_cursor_up lines
+def move_cursor_up
 	return if cursor_y < 1
-	###
-	if buffer[cursor_y - 1].length < cursor_x
-		cursor_x = buffer[cursor_y - 1].length
-	###
 	cursor_y -= 1
-	if cursor_y < scroll_y
+	if scroll_y > 0 and cursor_y < scroll_y + (process.stdout.rows >>> 1)
 		scroll_y -= 1
+	cursor_x = Math.min(cursor_x, row!.length)
 
-def move_cursor_down lines
+def move_cursor_down
 	return unless cursor_y < buffer.length - 1
-	###
-	if buffer[cursor_y + 1].length < cursor_x
-		cursor_x = buffer[cursor_y + 1].length
-	###
 	cursor_y += 1
-	if cursor_y - scroll_y >= stdout.rows
+	if cursor_y - scroll_y >= process.stdout.rows
 		scroll_y += 1
+	cursor_x = Math.min(cursor_x, row!.length)
 
-def move_cursor_right lines
-	# return unless cursor_x < buffer[cursor_y].length
+def move_cursor_right
+	return unless cursor_x < row!.length
 	cursor_x += 1
+	if cursor_x - scroll_x >= process.stdout.columns
+		scroll_x += 1
 
-def move_cursor_left lines
+def move_cursor_right_max
+	cursor_x = row!.length
+	if cursor_x - scroll_x >= process.stdout.columns
+		scroll_x += cursor_x - scroll_x - (process.stdout.columns >>> 1)
+
+def move_cursor_left
 	return if cursor_x < 1
 	cursor_x -= 1
+	if scroll_x > 0 and cursor_x < scroll_x + (process.stdout.columns >>> 1)
+		scroll_x -= 1
 
 def insert_text key
-	let line = buffer[cursor_y]
-	buffer[cursor_y] = line.slice(0, cursor_x) + key + line.slice(cursor_x)
-	cursor_x += key.length
+	buffer[cursor_y] = row!.slice(0, cursor_x) + key + row!.slice(cursor_x)
+	move_cursor_right!
 
 def delete_text
-	let line = buffer[cursor_y]
-	buffer[cursor_y] = line.slice(0, cursor_x - 1) + line.slice(cursor_x)
-	cursor_x -= 1
-
-def insert_tab
-	insert_text "  "
+	if cursor_x < 1 and cursor_y > 0
+		let y = cursor_y
+		move_cursor_up!
+		move_cursor_right_max!
+		buffer.splice(y - 1, 2, buffer[y - 1] + buffer[y])
+	else
+		buffer[cursor_y] = row!.slice(0, cursor_x - 1) + row!.slice(cursor_x)
+		move_cursor_left!
 
 def save_and_quit
-	let save_was_successful = save!
-	quit! if save_was_successful
-
-def save
 	try
 		writeFileSync filename, buffer.join("\n")
-		return yes
-	catch
-		return no
+		last_read = readFileSync(filename, "utf-8")
+		force_quit!
 
-def soft_quit
-	quit! if original_file === buffer.join("\n")
-
-def quit
+def force_quit
 	clear_screen!
+	show_cursor!
+	rmcup!
 	process.exit!
 
-def run_command
-	switch command_text
-		when "w"
-			save!
-		when "q"
-			soft_quit!
-		when "wq"
-			save_and_quit!
-		when "q!"
-			quit!
-	command_text = ""
-
 def insert_newline
-	buffer.splice(cursor_y + 1, 0, [])
-	cursor_y += 1
+	let first = row!.slice(0, cursor_x)
+	let rest = row!.slice(cursor_x)
+	buffer.splice(cursor_y, 1, first, rest)
+	move_cursor_down!
 	cursor_x = 0
+	scroll_x = 0
 
-def insert
-	if cursor_x > buffer[cursor_y].length
-		cursor_x = buffer[cursor_y].length
-	mode = "insert"
-
-let keymap_command = {
-	27: do
-		command_text = ""
+def toggle_mode
+	if mode === "normal"
+		if cursor_x > row!.length
+			cursor_x = row!.length
+			if row!.length < scroll_x
+				scroll_x = cursor_x
+		process.stdout.write "\x1b[4 q"
+		mode = "insert"
+	else
+		process.stdout.write "\x1b[1 q"
 		mode = "normal"
-	13: do
-		run_command!
-		mode = "normal"
-}
 
 let keymap_insert = {
-	27: do mode = "normal"
-	127: delete_text
-	9: insert_tab
-	13: insert_newline
+	27: toggle_mode # ESC
+	127: delete_text # BS
+	9: do insert_text "  " # TAB
+	13: insert_newline # CR
 }
 
 let keymap_normal = {
-	'i': insert
+	'i': toggle_mode
 	'h': move_cursor_left
 	'j': move_cursor_down
 	'k': move_cursor_up
 	'l': move_cursor_right
-	'I': do
-		cursor_x = 0
-		mode = "insert"
-	'A': do
-		cursor_x = buffer[cursor_y].length
-		mode = "insert"
-	'o': do
-		insert_newline!
-		mode = "insert"
-	':': do mode = "command"
+	"w": save_and_quit
+	"q": force_quit
 }
 
-stdin.setRawMode(yes)
-stdin.resume!
-stdin.setEncoding('utf8')
-draw_buffer!
-stdin.on('data') do |key|
-	if mode === "insert"
-		try
-			keymap_insert[key.charCodeAt(0)]!
-		catch
-			insert_text key
-	elif mode === "normal"
-		try
+process.stdin.setRawMode(yes)
+process.stdin.resume!
+process.stdin.setEncoding('utf8')
+smcup!
+draw!
+process.stdin.on('data') do |key|
+	if mode === "normal"
+		if keymap_normal.hasOwnProperty key
 			keymap_normal[key]!
-	elif mode === "command"
-		try
-			keymap_command[key.charCodeAt(0)]!
-		catch
-			command_text += key
-
-	if mode === "command"
-		draw ":" + command_text, command_text.length + 1, 0
 	else
-		draw_buffer!
+		let keycode = key.charCodeAt(0)
+		if keymap_insert.hasOwnProperty keycode
+			keymap_insert[keycode]!
+		else
+			insert_text key
+	draw!
