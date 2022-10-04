@@ -1,4 +1,6 @@
 import { readFileSync, writeFileSync } from 'fs'
+import { execSync } from 'child_process'
+const readline = require('readline')
 
 let filename
 let buffer
@@ -133,11 +135,21 @@ def toggle_mode
 		process.stdout.write "\x1b[1 q"
 		mode = "normal"
 
+def find_files
+	clear_screen!
+	show_cursor!
+	place_cursor 1, 1
+	let file
+	try
+		filename = execSync 'fd | fzy'
+		for char in filename.toString!
+			insert_text char
+
 let keymap_insert = {
-	27: toggle_mode # ESC
-	127: delete_text # BS
-	9: do insert_text "  " # TAB
-	13: insert_newline # CR
+	'escape': toggle_mode
+	'backspace': delete_text
+	'tab': do insert_text "  "
+	'return': insert_newline
 }
 
 let keymap_normal = {
@@ -146,23 +158,27 @@ let keymap_normal = {
 	'j': move_cursor_down
 	'k': move_cursor_up
 	'l': move_cursor_right
-	"w": save_and_quit
-	"q": force_quit
+	'w': save_and_quit
+	'q': force_quit
+	'f': find_files
 }
 
 process.stdin.setRawMode(yes)
 process.stdin.resume!
-process.stdin.setEncoding('utf8')
 smcup!
 draw!
-process.stdin.on('data') do |key|
+const options =
+	input: process.stdin
+	escapeCodeTimeout: 0
+const rl = readline.createInterface options
+readline.emitKeypressEvents process.stdin,rl
+process.stdin.on('keypress') do
 	if mode === "normal"
-		if keymap_normal.hasOwnProperty key
-			keymap_normal[key]!
+		if keymap_normal.hasOwnProperty $1
+			keymap_normal[$1]!
 	else
-		let keycode = key.charCodeAt(0)
-		if keymap_insert.hasOwnProperty keycode
-			keymap_insert[keycode]!
+		if keymap_insert.hasOwnProperty $2.name
+			keymap_insert[$2.name]!
 		else
-			insert_text key
+			insert_text $1
 	draw!
