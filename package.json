@@ -1,0 +1,14 @@
+{
+  "name": "saiko-text",
+  "version": "1.0.0",
+  "description": "This text editor will be the only thing efficient enough to fend off AI until 2030.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/familyfriendlymikey/saiko-text.git"
+  },
+  "author": "Mikey Oz",
+  "main": "main.js",
+  "scripts": {
+    "dev": "imba main.imba lol.txt"
+  }
+}

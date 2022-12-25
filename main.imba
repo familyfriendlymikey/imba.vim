@@ -2,6 +2,9 @@ import { readFileSync, writeFileSync } from 'fs'
 import { execSync } from 'child_process'
 const readline = require('readline')
 
+let cols = process.stdout.columns
+let rows = process.stdout.rows
+
 let filename
 let buffer
 let last_read
@@ -48,8 +51,8 @@ def row
 def draw
 	let arr = []
 	let row = scroll_y
-	while row < Math.min(scroll_y + process.stdout.rows, buffer.length)
-		arr.push buffer[row].slice(scroll_x, scroll_x + process.stdout.columns)
+	while row < Math.min(scroll_y + rows, buffer.length)
+		arr.push buffer[row].slice(scroll_x, scroll_x + cols)
 		row += 1
 	hide_cursor!
 	clear_screen!
@@ -61,32 +64,32 @@ def draw
 def move_cursor_up
 	return if cursor_y < 1
 	cursor_y -= 1
-	if scroll_y > 0 and cursor_y < scroll_y + (process.stdout.rows >>> 1)
+	if scroll_y > 0 and cursor_y < scroll_y + (rows >>> 1)
 		scroll_y -= 1
 	cursor_x = Math.min(cursor_x, row!.length)
 
 def move_cursor_down
 	return unless cursor_y < buffer.length - 1
 	cursor_y += 1
-	if cursor_y - scroll_y >= process.stdout.rows
+	if cursor_y - scroll_y >= rows
 		scroll_y += 1
 	cursor_x = Math.min(cursor_x, row!.length)
 
 def move_cursor_right
 	return unless cursor_x < row!.length
 	cursor_x += 1
-	if cursor_x - scroll_x >= process.stdout.columns
+	if cursor_x - scroll_x >= cols
 		scroll_x += 1
 
 def move_cursor_right_max
 	cursor_x = row!.length
-	if cursor_x - scroll_x >= process.stdout.columns
-		scroll_x += cursor_x - scroll_x - (process.stdout.columns >>> 1)
+	if cursor_x - scroll_x >= cols
+		scroll_x += cursor_x - scroll_x - (cols >>> 1)
 
 def move_cursor_left
 	return if cursor_x < 1
 	cursor_x -= 1
-	if scroll_x > 0 and cursor_x < scroll_x + (process.stdout.columns >>> 1)
+	if scroll_x > 0 and cursor_x < scroll_x + (cols >>> 1)
 		scroll_x -= 1
 
 def insert_text key
