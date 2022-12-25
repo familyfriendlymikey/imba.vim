@@ -8,8 +8,8 @@ let last_read
 
 try
 	filename = process.argv[2]
-	last_read = readFileSync(filename, "utf-8")
-	buffer = last_read.split("\n")
+	last-read = readFileSync(filename, "utf-8")
+	buffer = last-read.split("\n")
 catch
 	process.exit!
 
