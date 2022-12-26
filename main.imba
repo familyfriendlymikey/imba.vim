@@ -28,7 +28,7 @@ class App
 
 	filename
 	buffer
-	last-read
+	last-read = ""
 
 	scroll-y = 0
 	scroll-x = 0
@@ -42,7 +42,8 @@ class App
 	def constructor
 		try
 			filename = process.argv[2]
-			last-read = fs.readFileSync(filename, "utf-8")
+			if fs.existsSync filename
+				last-read = fs.readFileSync(filename, "utf-8")
 			buffer = last-read.split("\n")
 		catch
 			process.exit!
