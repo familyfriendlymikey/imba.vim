@@ -9,6 +9,6 @@
   "author": "Mikey Oz",
   "main": "main.js",
   "scripts": {
-    "dev": "imba main.imba lol.txt"
+    "dev": "imba main.imba test.txt"
   }
 }

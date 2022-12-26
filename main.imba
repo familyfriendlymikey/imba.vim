@@ -1,187 +1,173 @@
-import { readFileSync, writeFileSync } from 'fs'
-import { execSync } from 'child_process'
+import fs from 'fs'
+import cp from 'child_process'
+import term from './term'
 const readline = require('readline')
 
-let cols = process.stdout.columns
-let rows = process.stdout.rows
+global.L = do
+	fs.writeFileSync "log.txt", $1
 
-let filename
-let buffer
-let last_read
+class App
 
-try
-	filename = process.argv[2]
-	last-read = readFileSync(filename, "utf-8")
-	buffer = last-read.split("\n")
-catch
-	process.exit!
+	keymap_insert = {
+		'escape': toggle_mode.bind(this)
+		'backspace': delete_text.bind(this)
+		'tab': insert-tab.bind(this)
+		'return': insert_newline.bind(this)
+	}
 
-let scroll_y = 0
-let scroll_x = 0
-let cursor_x = 0
-let cursor_y = 0
-let mode = "normal"
+	keymap_normal = {
+		'i': toggle_mode.bind(this)
+		'h': move_cursor_left.bind(this)
+		'j': move_cursor_down.bind(this)
+		'k': move_cursor_up.bind(this)
+		'l': move_cursor_right.bind(this)
+		'w': save_and_quit.bind(this)
+		'q': force_quit.bind(this)
+		'f': find_files.bind(this)
+	}
 
-def clear_screen
-	# we don't use "\x1bc" here because that
-	# clears scrollback for the entire terminal session
-	process.stdout.write "\x1b[2J"
+	filename
+	buffer
+	last_read
 
-def place_cursor x, y
-	process.stdout.write "\x1b[{y};{x}H"
-
-def hide_cursor
-	process.stdout.write "\x1b[?25l"
-
-def show_cursor
-	process.stdout.write "\x1b[?25h"
-
-def smcup
-	# switches to an alternate screen buffer so as to not
-	# interfere with the user's current terminal window
-	process.stdout.write "\x1b[?1049h"
-
-def rmcup
-	# switches back, see smcup
-	process.stdout.write "\x1b[?1049l"
-
-def row
-	buffer[cursor_y]
-
-def draw
-	let arr = []
-	let row = scroll_y
-	while row < Math.min(scroll_y + rows, buffer.length)
-		arr.push buffer[row].slice(scroll_x, scroll_x + cols)
-		row += 1
-	hide_cursor!
-	clear_screen!
-	place_cursor 1, 1
-	process.stdout.write arr.join("\n")
-	place_cursor (cursor_x - scroll_x + 1), (cursor_y - scroll_y + 1)
-	show_cursor!
-
-def move_cursor_up
-	return if cursor_y < 1
-	cursor_y -= 1
-	if scroll_y > 0 and cursor_y < scroll_y + (rows >>> 1)
-		scroll_y -= 1
-	cursor_x = Math.min(cursor_x, row!.length)
-
-def move_cursor_down
-	return unless cursor_y < buffer.length - 1
-	cursor_y += 1
-	if cursor_y - scroll_y >= rows
-		scroll_y += 1
-	cursor_x = Math.min(cursor_x, row!.length)
-
-def move_cursor_right
-	return unless cursor_x < row!.length
-	cursor_x += 1
-	if cursor_x - scroll_x >= cols
-		scroll_x += 1
-
-def move_cursor_right_max
-	cursor_x = row!.length
-	if cursor_x - scroll_x >= cols
-		scroll_x += cursor_x - scroll_x - (cols >>> 1)
-
-def move_cursor_left
-	return if cursor_x < 1
-	cursor_x -= 1
-	if scroll_x > 0 and cursor_x < scroll_x + (cols >>> 1)
-		scroll_x -= 1
-
-def insert_text key
-	buffer[cursor_y] = row!.slice(0, cursor_x) + key + row!.slice(cursor_x)
-	move_cursor_right!
-
-def delete_text
-	if cursor_x < 1 and cursor_y > 0
-		let y = cursor_y
-		move_cursor_up!
-		move_cursor_right_max!
-		buffer.splice(y - 1, 2, buffer[y - 1] + buffer[y])
-	else
-		buffer[cursor_y] = row!.slice(0, cursor_x - 1) + row!.slice(cursor_x)
-		move_cursor_left!
-
-def save_and_quit
-	try
-		writeFileSync filename, buffer.join("\n")
-		last_read = readFileSync(filename, "utf-8")
-		force_quit!
-
-def force_quit
-	clear_screen!
-	show_cursor!
-	rmcup!
-	process.exit!
-
-def insert_newline
-	let first = row!.slice(0, cursor_x)
-	let rest = row!.slice(cursor_x)
-	buffer.splice(cursor_y, 1, first, rest)
-	move_cursor_down!
-	cursor_x = 0
+	scroll_y = 0
 	scroll_x = 0
+	cursor_x = 0
+	cursor_y = 0
+	mode = "normal"
 
-def toggle_mode
-	if mode === "normal"
-		if cursor_x > row!.length
-			cursor_x = row!.length
-			if row!.length < scroll_x
-				scroll_x = cursor_x
-		process.stdout.write "\x1b[4 q"
-		mode = "insert"
-	else
-		process.stdout.write "\x1b[1 q"
-		mode = "normal"
+	get row
+		buffer[cursor_y]
 
-def find_files
-	clear_screen!
-	show_cursor!
-	place_cursor 1, 1
-	let file
-	try
-		filename = execSync 'fd | fzy'
-		for char in filename.toString!
-			insert_text char
+	def constructor
+		try
+			filename = process.argv[2]
+			last-read = fs.readFileSync(filename, "utf-8")
+			buffer = last-read.split("\n")
+		catch
+			process.exit!
 
-let keymap_insert = {
-	'escape': toggle_mode
-	'backspace': delete_text
-	'tab': do insert_text "  "
-	'return': insert_newline
-}
+		process.stdin.setRawMode(yes)
+		process.stdin.resume!
+		term.smcup!
+		draw!
+		const options =
+			input: process.stdin
+			escapeCodeTimeout: 0
+		const rl = readline.createInterface options
+		readline.emitKeypressEvents process.stdin,rl
+		process.stdin.on('keypress') do
+			if mode === "normal"
+				if keymap_normal.hasOwnProperty $1
+					keymap_normal[$1]!
+			else
+				if keymap_insert.hasOwnProperty $2.name
+					keymap_insert[$2.name]!
+				else
+					insert_text $1
+			draw!
 
-let keymap_normal = {
-	'i': toggle_mode
-	'h': move_cursor_left
-	'j': move_cursor_down
-	'k': move_cursor_up
-	'l': move_cursor_right
-	'w': save_and_quit
-	'q': force_quit
-	'f': find_files
-}
+	def draw
+		let arr = []
+		let row = scroll_y
+		while row < Math.min(scroll_y + term.rows, buffer.length)
+			arr.push buffer[row].slice(scroll_x, scroll_x + term.cols)
+			row += 1
+		term.hide_cursor!
+		term.clear_screen!
+		term.place_cursor 1, 1
+		process.stdout.write arr.join("\n")
+		term.place_cursor (cursor_x - scroll_x + 1), (cursor_y - scroll_y + 1)
+		term.show_cursor!
 
-process.stdin.setRawMode(yes)
-process.stdin.resume!
-smcup!
-draw!
-const options =
-	input: process.stdin
-	escapeCodeTimeout: 0
-const rl = readline.createInterface options
-readline.emitKeypressEvents process.stdin,rl
-process.stdin.on('keypress') do
-	if mode === "normal"
-		if keymap_normal.hasOwnProperty $1
-			keymap_normal[$1]!
-	else
-		if keymap_insert.hasOwnProperty $2.name
-			keymap_insert[$2.name]!
+	def move_cursor_up
+		return if cursor_y < 1
+		cursor_y -= 1
+		if scroll_y > 0 and cursor_y < scroll_y
+			scroll_y -= 1
+		cursor_x = Math.min(cursor_x, row.length)
+
+	def move_cursor_down
+		return unless cursor_y < buffer.length - 1
+		cursor_y += 1
+		if cursor_y - scroll_y >= term.rows
+			scroll_y += 1
+		cursor_x = Math.min(cursor_x, row.length)
+
+	def move_cursor_right
+		return unless cursor_x < row.length
+		cursor_x += 1
+		if cursor_x - scroll_x >= term.cols
+			scroll_x += 1
+
+	def move_cursor_right_max
+		cursor_x = row.length
+		if cursor_x - scroll_x >= term.cols
+			scroll_x += cursor_x - scroll_x - (term.cols >>> 1)
+
+	def move_cursor_left
+		return if cursor_x < 1
+		cursor_x -= 1
+		if scroll_x > 0 and cursor_x < scroll_x + (term.cols >>> 1)
+			scroll_x -= 1
+
+	def insert_text key
+		buffer[cursor_y] = row.slice(0, cursor_x) + key + row.slice(cursor_x)
+		move_cursor_right!
+
+	def delete_text
+		if cursor_x < 1 and cursor_y > 0
+			let y = cursor_y
+			move_cursor_up!
+			move_cursor_right_max!
+			buffer.splice(y - 1, 2, buffer[y - 1] + buffer[y])
 		else
-			insert_text $1
-	draw!
+			buffer[cursor_y] = row.slice(0, cursor_x - 1) + row.slice(cursor_x)
+			move_cursor_left!
+
+	def save_and_quit
+		try
+			fs.writeFileSync filename, buffer.join("\n")
+			last_read = fs.readFileSync(filename, "utf-8")
+			force_quit!
+
+	def force_quit
+		term.clear_screen!
+		term.show_cursor!
+		term.rmcup!
+		process.exit!
+
+	def insert-tab
+		insert_text "  "
+
+	def insert_newline
+		let first = row.slice(0, cursor_x)
+		let rest = row.slice(cursor_x)
+		buffer.splice(cursor_y, 1, first, rest)
+		move_cursor_down!
+		cursor_x = 0
+		scroll_x = 0
+
+	def toggle_mode
+		if mode === "normal"
+			if cursor_x > row.length
+				cursor_x = row.length
+				if row.length < scroll_x
+					scroll_x = cursor_x
+			# process.stdout.write "\x1b[4 q"
+			mode = "insert"
+		else
+			# process.stdout.write "\x1b[1 q"
+			mode = "normal"
+
+	def find_files
+		term.clear_screen!
+		term.show_cursor!
+		term.place_cursor 1, 1
+		let file
+		try
+			filename = cp.execSync 'fd | fzy'
+			for char in filename.toString!
+				insert_text char
+
+global.App = new App
