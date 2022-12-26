@@ -1,10 +1,12 @@
 import fs from 'fs'
 import cp from 'child_process'
-import term from './term'
-const readline = require('readline')
+import readline from 'readline'
 
-global.L = do
-	fs.writeFileSync "log.txt", $1
+import term from './term'
+import TextBuffer from './buffer'
+# import { keymap-normal, keymap-insert } from './keymap'
+
+global.L = console.error
 
 class App
 
@@ -24,28 +26,20 @@ class App
 		'w': save-and-quit.bind(this)
 		'q': force-quit.bind(this)
 		'f': find-files.bind(this)
+		'A': move-cursor-end-insert.bind(this)
 	}
 
-	filename
-	buffer
-	last-read = ""
+	files = []
 
-	scroll-y = 0
-	scroll-x = 0
-	cursor-x = 0
-	cursor-y = 0
-	mode = "normal"
-
-	get row
-		buffer[cursor-y]
+	get buffer
+		files[0]
 
 	def constructor
 		try
 			filename = process.argv[2]
-			if fs.existsSync filename
-				last-read = fs.readFileSync(filename, "utf-8")
-			buffer = last-read.split("\n")
-		catch
+			let buf = new TextBuffer(filename)
+			files.push buf
+		catch e
 			process.exit!
 
 		process.stdin.setRawMode(yes)
@@ -58,7 +52,7 @@ class App
 		const rl = readline.createInterface options
 		readline.emitKeypressEvents process.stdin,rl
 		process.stdin.on('keypress') do
-			if mode === "normal"
+			if buffer.mode is "normal"
 				if keymap-normal.hasOwnProperty $1
 					keymap-normal[$1]!
 			else
@@ -70,65 +64,72 @@ class App
 
 	def draw
 		let arr = []
-		let row = scroll-y
-		while row < Math.min(scroll-y + term.rows, buffer.length)
-			arr.push buffer[row].slice(scroll-x, scroll-x + term.cols)
+		let row = buffer.scroll-y
+		while row < Math.min(buffer.scroll-y + term.rows, buffer.content.length)
+			arr.push buffer.content[row].slice(buffer.scroll-x, buffer.scroll-x + term.cols)
 			row += 1
 		term.hide-cursor!
 		term.clear-screen!
 		term.place-cursor 1, 1
 		process.stdout.write arr.join("\n")
-		term.place-cursor (cursor-x - scroll-x + 1), (cursor-y - scroll-y + 1)
+		term.place-cursor (buffer.cursor-x - buffer.scroll-x + 1), (buffer.cursor-y - buffer.scroll-y + 1)
 		term.show-cursor!
 
+	def move-cursor-end-insert
+		move-cursor-end!
+		toggle-mode!
+
+	def move-cursor-end
+		buffer.cursor-x = buffer.row.length
+
 	def move-cursor-up
-		return if cursor-y < 1
-		cursor-y -= 1
-		if scroll-y > 0 and cursor-y < scroll-y
-			scroll-y -= 1
-		cursor-x = Math.min(cursor-x, row.length)
+		return if buffer.cursor-y < 1
+		buffer.cursor-y -= 1
+		if buffer.scroll-y > 0 and buffer.cursor-y < buffer.scroll-y
+			buffer.scroll-y -= 1
+		buffer.cursor-x = Math.min(buffer.cursor-x, buffer.row.length)
 
 	def move-cursor-down
-		return unless cursor-y < buffer.length - 1
-		cursor-y += 1
-		if cursor-y - scroll-y >= term.rows
-			scroll-y += 1
-		cursor-x = Math.min(cursor-x, row.length)
+		return unless buffer.cursor-y < buffer.content.length - 1
+		buffer.cursor-y += 1
+		if buffer.cursor-y - buffer.scroll-y >= term.rows
+			buffer.scroll-y += 1
+		buffer.cursor-x = Math.min(buffer.cursor-x, buffer.row.length)
 
 	def move-cursor-right
-		return unless cursor-x < row.length
-		cursor-x += 1
-		if cursor-x - scroll-x >= term.cols
-			scroll-x += 1
+		return unless buffer.cursor-x < buffer.row.length
+		buffer.cursor-x += 1
+		if buffer.cursor-x - buffer.scroll-x >= term.cols
+			buffer.scroll-x += 1
 
 	def move-cursor-right-max
-		cursor-x = row.length
-		if cursor-x - scroll-x >= term.cols
-			scroll-x += cursor-x - scroll-x - (term.cols >>> 1)
+		buffer.cursor-x = buffer.row.length
+		if buffer.cursor-x - buffer.scroll-x >= term.cols
+			buffer.scroll-x += buffer.cursor-x - buffer.scroll-x - (term.cols >>> 1)
 
 	def move-cursor-left
-		return if cursor-x < 1
-		cursor-x -= 1
-		if scroll-x > 0 and cursor-x < scroll-x + (term.cols >>> 1)
-			scroll-x -= 1
+		return if buffer.cursor-x < 1
+		buffer.cursor-x -= 1
+		if buffer.scroll-x > 0 and buffer.cursor-x < buffer.scroll-x + (term.cols >>> 1)
+			buffer.scroll-x -= 1
 
 	def insert-text key
-		buffer[cursor-y] = row.slice(0, cursor-x) + key + row.slice(cursor-x)
+		buffer.content[buffer.cursor-y] = buffer.row.slice(0, buffer.cursor-x) + key + buffer.row.slice(buffer.cursor-x)
 		move-cursor-right!
 
 	def delete-text
-		if cursor-x < 1 and cursor-y > 0
-			let y = cursor-y
+		if buffer.cursor-x < 1 and buffer.cursor-y > 0
+			let y = buffer.cursor-y
 			move-cursor-up!
 			move-cursor-right-max!
-			buffer.splice(y - 1, 2, buffer[y - 1] + buffer[y])
+			buffer.content.splice(y - 1, 2, buffer.content[y - 1] + buffer.content[y])
 		else
-			buffer[cursor-y] = row.slice(0, cursor-x - 1) + row.slice(cursor-x)
+			buffer.content[buffer.cursor-y] = buffer.row.slice(0, buffer.cursor-x - 1) + buffer.row.slice(buffer.cursor-x)
 			move-cursor-left!
 
 	def save-and-quit
 		try
-			fs.writeFileSync filename, buffer.join("\n")
+			fs.writeFileSync filename, buffer.content.join("\n")
 			last-read = fs.readFileSync(filename, "utf-8")
 			force-quit!
 
@@ -142,24 +143,12 @@ class App
 		insert-text "  "
 
 	def insert-newline
-		let first = row.slice(0, cursor-x)
-		let rest = row.slice(cursor-x)
-		buffer.splice(cursor-y, 1, first, rest)
+		let first = buffer.row.slice(0, buffer.cursor-x)
+		let rest = buffer.row.slice(buffer.cursor-x)
+		buffer.content.splice(buffer.cursor-y, 1, first, rest)
 		move-cursor-down!
-		cursor-x = 0
-		scroll-x = 0
-
-	def toggle-mode
-		if mode === "normal"
-			if cursor-x > row.length
-				cursor-x = row.length
-				if row.length < scroll-x
-					scroll-x = cursor-x
-			# process.stdout.write "\x1b[4 q"
-			mode = "insert"
-		else
-			# process.stdout.write "\x1b[1 q"
-			mode = "normal"
+		buffer.cursor-x = 0
+		buffer.scroll-x = 0
 
 	def find-files
 		term.clear-screen!
@@ -170,5 +159,19 @@ class App
 			filename = cp.execSync 'fd | fzy'
 			for char in filename.toString!
 				insert-text char
+
+	def toggle-mode
+		L buffer
+		if buffer.mode is "normal"
+			if buffer.cursor-x > buffer.row.length
+				buffer.cursor-x = buffer.row.length
+				if buffer.row.length < buffer.scroll-x
+					buffer.scroll-x = buffer.cursor-x
+			process.stdout.write "\x1b[4 q"
+			buffer.mode = "insert"
+		else
+			process.stdout.write "\x1b[1 q"
+			buffer.mode = "normal"
+
 
 global.App = new App
