@@ -27,6 +27,7 @@ class App
 		'q': force-quit.bind(this)
 		'f': find-files.bind(this)
 		'A': move-cursor-right-max-insert.bind(this)
+		'I': move-cursor-left-max-insert.bind(this)
 	}
 
 	files = []
@@ -118,6 +119,15 @@ class App
 
 	def move-cursor-right-max-insert
 		move-cursor-right-max!
+		toggle-mode!
+
+	def move-cursor-left-max
+		let start = buffer.row.indexOf /\S/
+		if start is -1 then start = 0
+		move-cursor start, buffer.cursor-y
+
+	def move-cursor-left-max-insert
+		move-cursor-left-max!
 		toggle-mode!
 
 	def insert-text key
