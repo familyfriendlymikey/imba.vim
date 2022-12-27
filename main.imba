@@ -80,9 +80,8 @@ class App
 
 	def replace-content arr
 		arr = arr.map do
-			$1 = $1.replaceAll '  ','~'.cyan + ' '
-			$1 = $1.replaceAll '  ',' ' + '~'.cyan
-			$1 = $1.replace /\ $/,'~'.cyan
+			$1 = $1.replace /\ +$/, do
+				'~'.repeat($1.length).cyan
 			$1 = $1.replace /\t/g, '.'.cyan + ' '
 
 	get display-buffer
@@ -93,7 +92,7 @@ class App
 			let left = buffer.scroll-x
 			let right = Math.min(buffer.scroll-x + term.cols,row.length)
 			row.slice(left,right)
-		out.join '\n'
+		replace-content(out).join '\n'
 
 	get cursor-display-pos
 		let text = buffer.row.slice(0,buffer.cursor-x)
@@ -104,7 +103,7 @@ class App
 		term.clear-screen!
 		term.place-cursor 1, 1
 		term.write display-buffer
-		term.place-cursor (buffer.cursor-x - buffer.scroll-x + 1), (buffer.cursor-y - buffer.scroll-y + 1)
+		term.place-cursor (cursor-display-pos - buffer.scroll-x + 1), (buffer.cursor-y - buffer.scroll-y + 1)
 		term.flush!
 
 	def move-cursor x, y
