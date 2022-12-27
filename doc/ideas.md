@@ -1,3 +1,5 @@
+if a user does vv/zz, center horizontally too if scroll-x > 0
+
 a key to only show lines with active selections on them,
 which can be scrollable. Then, there is no need to impl
 inccommand
