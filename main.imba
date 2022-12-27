@@ -80,13 +80,12 @@ class App
 
 	def replace-content arr
 		arr = arr.map do
-			$1.replace /\t/g, '. '.cyan
-		arr = arr.map do
-			$1.replace /\s+$/g, do
-				'~'.repeat($1.length).cyan
-		arr = arr.map do
-			$1.replace /(?<=\s)\s+/g, do
-				'~'.repeat($1.length).cyan
+
+			$1 = $1.replaceAll('  ','~'.cyan + ' ')
+			$1 = $1.replaceAll('  ',' ' + '~'.cyan)
+			$1 = $1.replace(/\ $/,'~'.cyan)
+
+			$1 = $1.replace /\t/g, '.'.cyan + ' '
 
 	def draw
 		update-scroll!
