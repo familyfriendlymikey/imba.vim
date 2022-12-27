@@ -1,3 +1,7 @@
+a key to only show lines with active selections on them,
+which can be scrollable. Then, there is no need to impl
+inccommand
+
 *
 USE SELECTION to find next match
 
