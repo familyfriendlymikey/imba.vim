@@ -1,7 +1,9 @@
 import fs from 'fs'
 import cp from 'child_process'
 import readline from 'readline'
+import 'colors'
 
+import * as utils from './utils'
 import term from './term'
 import TextBuffer from './buffer'
 # import { keymap-normal, keymap-insert } from './keymap'
@@ -13,7 +15,6 @@ class App
 	keymap-insert = {
 		'escape': toggle-mode.bind(this)
 		'backspace': delete-text.bind(this)
-		'tab': insert-tab.bind(this)
 		'return': insert-newline.bind(this)
 	}
 
@@ -77,6 +78,16 @@ class App
 		elif buffer.scroll-x > 0 and buffer.cursor-x < buffer.scroll-x
 			buffer.scroll-x -= 1
 
+	def replace-content arr
+		arr = arr.map do
+			$1.replace /\t/g, '. '.cyan
+		arr = arr.map do
+			$1.replace /\s+$/g, do
+				'~'.repeat($1.length).cyan
+		arr = arr.map do
+			$1.replace /(?<=\s)\s+/g, do
+				'~'.repeat($1.length).cyan
+
 	def draw
 		update-scroll!
 		let arr = []
@@ -84,6 +95,7 @@ class App
 		while row < Math.min(buffer.scroll-y + term.rows, buffer.content.length)
 			arr.push buffer.content[row].slice(buffer.scroll-x, buffer.scroll-x + term.cols)
 			row += 1
+		arr = replace-content arr
 		term.hide-cursor!
 		term.clear-screen!
 		term.place-cursor 1, 1
@@ -191,7 +203,7 @@ class App
 			term.write "\x1b[4 q"
 			buffer.mode = "insert"
 		else
-			term.write "\x1b[1 q"
+			term.write "\x1b[0 q"
 			buffer.mode = "normal"
 		term.flush!
 

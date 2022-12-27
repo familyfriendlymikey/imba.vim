@@ -10,5 +10,8 @@
   "main": "main.js",
   "scripts": {
     "dev": "imba main.imba test.txt"
+  },
+  "dependencies": {
+    "colors": "^1.4.0"
   }
 }

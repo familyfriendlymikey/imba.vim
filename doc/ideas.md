@@ -1,3 +1,6 @@
+don't delete tabs if line is empty, leave them there (unlink vim, like kakoune)
+but also when using `dap` don't include those lines as connectors for another paragraph
+
 if a user does vv/zz, center horizontally too if scroll-x > 0
 
 a key to only show lines with active selections on them,
