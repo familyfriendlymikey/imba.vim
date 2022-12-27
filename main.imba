@@ -28,6 +28,8 @@ class App
 		'f': find-files.bind(this)
 		'A': move-cursor-right-max-insert.bind(this)
 		'I': move-cursor-left-max-insert.bind(this)
+		'o': new-line-below-insert.bind(this)
+		'O': new-line-above-insert.bind(this)
 	}
 
 	files = []
@@ -190,5 +192,13 @@ class App
 			process.stdout.write "\x1b[1 q"
 			buffer.mode = "normal"
 
+	def new-line-below-insert
+		buffer.content.splice(buffer.cursor-y + 1,0,'')
+		move-cursor buffer.cursor-x, buffer.cursor-y + 1
+		toggle-mode!
+
+	def new-line-above-insert
+		buffer.content.splice(buffer.cursor-y,0,'')
+		toggle-mode!
 
 global.App = new App
