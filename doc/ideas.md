@@ -33,3 +33,5 @@ edit file relative to project location
 
 :e ./test/whatever
 edit file relative to current buffer
+
+don't move the selection on scroll.
