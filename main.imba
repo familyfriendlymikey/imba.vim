@@ -26,7 +26,7 @@ class App
 		'w': save-and-quit.bind(this)
 		'q': force-quit.bind(this)
 		'f': find-files.bind(this)
-		'A': move-cursor-end-insert.bind(this)
+		'A': move-cursor-right-max-insert.bind(this)
 	}
 
 	files = []
@@ -116,7 +116,7 @@ class App
 	def move-cursor-right-max
 		move-cursor buffer.row.length, buffer.cursor-y
 
-	def move-cursor-end-insert
+	def move-cursor-right-max-insert
 		move-cursor-right-max!
 		toggle-mode!
 
