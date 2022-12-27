@@ -80,27 +80,31 @@ class App
 
 	def replace-content arr
 		arr = arr.map do
-
-			$1 = $1.replaceAll('  ','~'.cyan + ' ')
-			$1 = $1.replaceAll('  ',' ' + '~'.cyan)
-			$1 = $1.replace(/\ $/,'~'.cyan)
-
+			$1 = $1.replaceAll '  ','~'.cyan + ' '
+			$1 = $1.replaceAll '  ',' ' + '~'.cyan
+			$1 = $1.replace /\ $/,'~'.cyan
 			$1 = $1.replace /\t/g, '.'.cyan + ' '
 
+	get display-buffer
+		let top = buffer.scroll-y
+		let bottom = Math.min(buffer.scroll-y + term.rows,buffer.content.length)
+		let out = buffer.content.slice(top,bottom)
+		out = out.map do(row)
+			let left = buffer.scroll-x
+			let right = Math.min(buffer.scroll-x + term.cols,row.length)
+			row.slice(left,right)
+		out.join '\n'
+
+	get cursor-display-pos
+		let text = buffer.row.slice(0,buffer.cursor-x)
+		text = text.replaceAll('\t','  ')
+		text.length
+
 	def draw
-		update-scroll!
-		let arr = []
-		let row = buffer.scroll-y
-		while row < Math.min(buffer.scroll-y + term.rows, buffer.content.length)
-			arr.push buffer.content[row].slice(buffer.scroll-x, buffer.scroll-x + term.cols)
-			row += 1
-		arr = replace-content arr
-		term.hide-cursor!
 		term.clear-screen!
 		term.place-cursor 1, 1
-		term.write arr.join("\n")
+		term.write display-buffer
 		term.place-cursor (buffer.cursor-x - buffer.scroll-x + 1), (buffer.cursor-y - buffer.scroll-y + 1)
-		term.show-cursor!
 		term.flush!
 
 	def move-cursor x, y
@@ -115,6 +119,8 @@ class App
 
 		buffer.cursor-y = y
 		buffer.cursor-x = Math.min buffer.row.length, buffer.cursor-x-last
+
+		update-scroll!
 
 	def move-cursor-up
 		move-cursor buffer.cursor-x, buffer.cursor-y - 1
