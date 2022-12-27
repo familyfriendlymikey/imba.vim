@@ -62,7 +62,20 @@ class App
 					insert-text $1
 			draw!
 
+	def update-scroll
+
+		if buffer.cursor-y - buffer.scroll-y >= term.rows
+			buffer.scroll-y += 1
+		elif buffer.scroll-y > 0 and buffer.cursor-y < buffer.scroll-y
+			buffer.scroll-y -= 1
+
+		if buffer.cursor-x - buffer.scroll-x >= term.cols
+			buffer.scroll-x += 1
+		elif buffer.scroll-x > 0 and buffer.cursor-x < buffer.scroll-x
+			buffer.scroll-x -= 1
+
 	def draw
+		update-scroll!
 		let arr = []
 		let row = buffer.scroll-y
 		while row < Math.min(buffer.scroll-y + term.rows, buffer.content.length)
@@ -75,43 +88,28 @@ class App
 		term.place-cursor (buffer.cursor-x - buffer.scroll-x + 1), (buffer.cursor-y - buffer.scroll-y + 1)
 		term.show-cursor!
 
-	def move-cursor-end-insert
-		move-cursor-end!
-		toggle-mode!
-
-	def move-cursor-end
-		buffer.cursor-x = buffer.row.length
-
 	def move-cursor-up
 		return if buffer.cursor-y < 1
 		buffer.cursor-y -= 1
-		if buffer.scroll-y > 0 and buffer.cursor-y < buffer.scroll-y
-			buffer.scroll-y -= 1
-		buffer.cursor-x = Math.min(buffer.cursor-x, buffer.row.length)
 
 	def move-cursor-down
 		return unless buffer.cursor-y < buffer.content.length - 1
 		buffer.cursor-y += 1
-		if buffer.cursor-y - buffer.scroll-y >= term.rows
-			buffer.scroll-y += 1
-		buffer.cursor-x = Math.min(buffer.cursor-x, buffer.row.length)
 
 	def move-cursor-right
 		return unless buffer.cursor-x < buffer.row.length
 		buffer.cursor-x += 1
-		if buffer.cursor-x - buffer.scroll-x >= term.cols
-			buffer.scroll-x += 1
-
-	def move-cursor-right-max
-		buffer.cursor-x = buffer.row.length
-		if buffer.cursor-x - buffer.scroll-x >= term.cols
-			buffer.scroll-x += buffer.cursor-x - buffer.scroll-x - (term.cols >>> 1)
 
 	def move-cursor-left
 		return if buffer.cursor-x < 1
 		buffer.cursor-x -= 1
-		if buffer.scroll-x > 0 and buffer.cursor-x < buffer.scroll-x + (term.cols >>> 1)
-			buffer.scroll-x -= 1
+
+	def move-cursor-right-max
+		buffer.cursor-x = buffer.row.length
+
+	def move-cursor-end-insert
+		move-cursor-right-max!
+		toggle-mode!
 
 	def insert-text key
 		buffer.content[buffer.cursor-y] = buffer.row.slice(0, buffer.cursor-x) + key + buffer.row.slice(buffer.cursor-x)
