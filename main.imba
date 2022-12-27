@@ -137,7 +137,7 @@ class App
 		toggle-mode!
 
 	def move-cursor-left-max
-		let start = buffer.row.indexOf /\S/
+		let start = buffer.row.search /\S/
 		if start is -1 then start = 0
 		move-cursor start, buffer.cursor-y
 
