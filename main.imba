@@ -87,9 +87,10 @@ class App
 		term.hide-cursor!
 		term.clear-screen!
 		term.place-cursor 1, 1
-		process.stdout.write arr.join("\n")
+		term.write arr.join("\n")
 		term.place-cursor (buffer.cursor-x - buffer.scroll-x + 1), (buffer.cursor-y - buffer.scroll-y + 1)
 		term.show-cursor!
+		term.flush!
 
 	def move-cursor x, y
 
@@ -156,6 +157,7 @@ class App
 		term.clear-screen!
 		term.show-cursor!
 		term.rmcup!
+		term.flush!
 		process.exit!
 
 	def insert-tab
@@ -178,19 +180,20 @@ class App
 			filename = cp.execSync 'fd | fzy'
 			for char in filename.toString!
 				insert-text char
+		term.flush!
 
 	def toggle-mode
-		L buffer
 		if buffer.mode is "normal"
 			if buffer.cursor-x > buffer.row.length
 				buffer.cursor-x = buffer.row.length
 				if buffer.row.length < buffer.scroll-x
 					buffer.scroll-x = buffer.cursor-x
-			process.stdout.write "\x1b[4 q"
+			term.write "\x1b[4 q"
 			buffer.mode = "insert"
 		else
-			process.stdout.write "\x1b[1 q"
+			term.write "\x1b[1 q"
 			buffer.mode = "normal"
+		term.flush!
 
 	def new-line-below-insert
 		buffer.content.splice(buffer.cursor-y + 1,0,'')
