@@ -8,6 +8,10 @@ must account for text objects like tags, such as <div></div>
 so M automatically expands the selection continuously, alternating
 between inner and outer?
 
+m/M
+maybe instead of alternating, there can be one key that just goes through the heirarchy of text objects
+so it starts at word, then WORD, then maybe sentence, then maybe paragraph, or perhaps a parenthesis, until eventually it's the whole document?
+
 m
 select only (surround chars),
 then the user can use normal editing commands
