@@ -88,24 +88,33 @@ class App
 		term.place-cursor (buffer.cursor-x - buffer.scroll-x + 1), (buffer.cursor-y - buffer.scroll-y + 1)
 		term.show-cursor!
 
+	def move-cursor x, y
+
+		if x isnt buffer.cursor-x
+			buffer.cursor-x-last = Math.min(Math.max(x,0),buffer.row.length)
+
+		return if x < 0
+		return if y < 0
+		return if x > buffer.row.length
+		return if y > buffer.content.length - 1
+
+		buffer.cursor-y = y
+		buffer.cursor-x = Math.min buffer.row.length, buffer.cursor-x-last
+
 	def move-cursor-up
-		return if buffer.cursor-y < 1
-		buffer.cursor-y -= 1
+		move-cursor buffer.cursor-x, buffer.cursor-y - 1
 
 	def move-cursor-down
-		return unless buffer.cursor-y < buffer.content.length - 1
-		buffer.cursor-y += 1
+		move-cursor buffer.cursor-x, buffer.cursor-y + 1
 
 	def move-cursor-right
-		return unless buffer.cursor-x < buffer.row.length
-		buffer.cursor-x += 1
+		move-cursor buffer.cursor-x + 1, buffer.cursor-y
 
 	def move-cursor-left
-		return if buffer.cursor-x < 1
-		buffer.cursor-x -= 1
+		move-cursor buffer.cursor-x - 1, buffer.cursor-y
 
 	def move-cursor-right-max
-		buffer.cursor-x = buffer.row.length
+		move-cursor buffer.row.length, buffer.cursor-y
 
 	def move-cursor-end-insert
 		move-cursor-right-max!
