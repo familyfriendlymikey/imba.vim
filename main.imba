@@ -3,9 +3,9 @@ import cp from 'child_process'
 import readline from 'readline'
 import 'colors'
 
-import * as utils from './utils'
-import term from './term'
-import TextBuffer from './buffer'
+import * as utils from './utils/index.imba'
+import term from './term.imba'
+import TextBuffer from './buffer.imba'
 # import { keymap-normal, keymap-insert } from './keymap'
 
 global.L = console.error
@@ -103,7 +103,9 @@ class App
 		term.clear-screen!
 		term.place-cursor 1, 1
 		term.write display-buffer
-		term.place-cursor (cursor-display-pos - buffer.scroll-x + 1), (buffer.cursor-y - buffer.scroll-y + 1)
+		let x = cursor-display-pos - buffer.scroll-x + 1
+		let y = buffer.cursor-y - buffer.scroll-y + 1
+		term.place-cursor x,y
 		term.flush!
 
 	def move-cursor x, y
