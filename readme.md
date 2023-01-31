@@ -1,7 +1,10 @@
-# Saiko Text
+# imba.vim
 
-This text editor will be the only thing efficient enough
-to fend off AI until 2030.
+A TUI editor written in Imba. It works but it's incomplete.
+
+I'd love to have an editor that I can customize with Imba but I don't want to be on
+the computer more than I already am, and tools like Neovim, Kakoune, and Helix are already
+80% as good as it's going to get.
 
 ## Development
 
